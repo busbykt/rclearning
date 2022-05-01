@@ -1,0 +1,1 @@
+python mavlogdump.py --types ATT,GPS,IMU,RCIN,RCOU,STAT --format json firstCrash.BIN > firstCrash.json

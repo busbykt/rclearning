@@ -1,0 +1,17 @@
+name: rclearning
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python>=3.9
+  - numpy
+  - scikit-learn
+  - matplotlib
+  - pandas
+  - seaborn
+  - pip
+  - ipython
+  - ipykernel
+  - pip:
+    - tensorflow
+    - keras
