@@ -12,6 +12,8 @@ dependencies:
   - pip
   - ipython
   - ipykernel
+  - pyarrow
+  - fastparquet
   - pip:
     - tensorflow
     - keras

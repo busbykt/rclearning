@@ -34,7 +34,7 @@ for i,file in enumerate(csvFiles):
 # sort the data by timestamp
 df.sort_values('timestamp', inplace=True)
 # forward fill data where missing
-df.fillna(method='ffill', inplace=True)
+df.interpolate(method='linear', inplace=True, limit_direction='forward')
 
 # drop the first missing records
 df = df[~df.isnull().max(axis=1)]
@@ -53,8 +53,8 @@ df['timeStep'] = df['datetime'].shift(-1) - df['datetime']
 # resample the data at some fixed frequency
 df.resample('50ms').ffill()
 
-# only keep records when the airplane might be flying
-df = df[df['isFlyProb'] > 0]
+# only keep records when the airplane is likely to be flying
+df = df[df['isFlyProb'] > .8]
 
 df['mode'] = np.where(df['C8'] < 1000, 'manual', 'fbwa')
 df['mode'] = np.where(df['C8'] > 2000, 'autotune', df['mode'])
@@ -65,21 +65,19 @@ norm = plt.Normalize(df['timestamp'].min(), df['timestamp'].max())
 sm = plt.cm.ScalarMappable(cmap="Spectral", norm=norm)
 sm.set_array([])
 sns.scatterplot(
-    data=df[(df['mode'] == 'manual') & 
-            (df['C1'] != 1495)], 
-    x='C1', 
-    y='GyrX', 
+    data=df[(df['mode'] == 'manual')], 
+    x='C2RCOU', 
+    y='GyrY', 
     hue='datetime',
     legend=False,
     ax=ax,
-    palette='Spectral',
-    size='AccZ'
+    palette='Spectral'
     )
 ax.figure.colorbar(sm)
 # %%
 # scale the data so it may be plotted together cleanly
-from sklearn.preprocessing import StandardScaler
-scaler = StandardScaler()
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler()
 
 # only scale numeric cols
 colsToScale = df.select_dtypes('float').columns.tolist()
@@ -87,9 +85,9 @@ colsToScale = df.select_dtypes('float').columns.tolist()
 # scale the data and save into another dataframe
 scaledDF = pd.DataFrame(scaler.fit_transform(df[colsToScale]), 
                         columns=colsToScale)
+scaledDF['mode'] = df['mode'].values
 # %%
 fig,ax = plt.subplots(dpi=90, figsize=[8,6])
-plt.plot(scaledDF['C1RCOU'])
-plt.plot(scaledDF['Roll'])
-plt.xlim(0,15000)
-# %%
+plt.plot(scaledDF[scaledDF['mode'].isin(['fbwa', 'manual'])]['AccX'])
+plt.plot(scaledDF[scaledDF['mode'].isin(['fbwa', 'manual'])]['Roll'])
+plt.xlim(0,16000)
