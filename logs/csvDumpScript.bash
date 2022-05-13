@@ -7,3 +7,4 @@ python mavlogdump.py --types STAT --format csv firstCrash.BIN > firstCrashSTAT.C
 python mavlogdump.py --types MODE --format csv firstCrash.BIN > firstCrashMODE.CSV
 python mavlogdump.py --types AOA --format csv firstCrash.BIN > firstCrashAOA.CSV
 python mavlogdump.py --types NTUN --format csv firstCrash.BIN > firstCrashNTUN.CSV
+python mavlogdump.py --types BARO --format csv firstCrash.BIN > firstCrashBARO.CSV

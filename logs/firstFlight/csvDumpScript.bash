@@ -7,3 +7,4 @@ python ../mavlogdump.py --types STAT --format csv firstFlight.BIN > firstFlightS
 python ../mavlogdump.py --types MODE --format csv firstFlight.BIN > firstFlightMODE.CSV
 python ../mavlogdump.py --types AOA --format csv firstFlight.BIN > firstFlightAOA.CSV
 python ../mavlogdump.py --types NTUN --format csv firstFlight.BIN > firstFlightNTUN.CSV
+python ../mavlogdump.py --types BARO --format csv firstFlight.BIN > firstFlightBARO.CSV
