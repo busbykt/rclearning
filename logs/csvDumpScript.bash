@@ -5,3 +5,5 @@ python mavlogdump.py --types RCIN --format csv firstCrash.BIN > firstCrashRCIN.C
 python mavlogdump.py --types RCOU --format csv firstCrash.BIN > firstCrashRCOU.CSV
 python mavlogdump.py --types STAT --format csv firstCrash.BIN > firstCrashSTAT.CSV
 python mavlogdump.py --types MODE --format csv firstCrash.BIN > firstCrashMODE.CSV
+python mavlogdump.py --types AOA --format csv firstCrash.BIN > firstCrashAOA.CSV
+python mavlogdump.py --types NTUN --format csv firstCrash.BIN > firstCrashNTUN.CSV

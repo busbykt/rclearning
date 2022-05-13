@@ -16,16 +16,16 @@ assert os.path.basename(os.getcwd()) == 'rclearning'
 
 # %%
 # read in the csv log files
-allFiles = os.listdir("./logs/")    
+allFiles = os.listdir("./logs/firstFlight")    
 csvFiles = list(filter(lambda f: f.lower().endswith('.csv'), allFiles))
 # %%
 
 for i,file in enumerate(csvFiles):
     
     if i == 0: # if first file, read
-        df = pd.read_csv('./logs/'+file)
+        df = pd.read_csv('./logs/firstFlight/'+file)
     else: # otherwise append it to the dataframe
-        df = df.merge(pd.read_csv('./logs/'+file),
+        df = df.merge(pd.read_csv('./logs/firstFlight/'+file),
                       how='outer',
                       left_on='timestamp',
                       right_on='timestamp',
@@ -50,14 +50,30 @@ df.index = df['datetime']
 # add a feature to track the timestep as the data is async
 df['timeStep'] = df['datetime'].shift(-1) - df['datetime']
 
+# %%
 # resample the data at some fixed frequency
-df.resample('50ms').ffill()
+df = df.resample('200ms').ffill()
 
+# FOR FIRST FLIGHT ONLY
+df = df[(df.index > '2022-04-21 01:04:00.000') &
+        (df.index < '2022-04-21 01:08:26.000')]
+
+# %%
 # only keep records when the airplane is likely to be flying
 df = df[df['isFlyProb'] > .8]
 
 df['mode'] = np.where(df['C8'] < 1000, 'manual', 'fbwa')
 df['mode'] = np.where(df['C8'] > 2000, 'autotune', df['mode'])
+
+# compute estimated airspeed from target and error
+df['AspdE'] = -df['AspdE']
+
+# convert the timestamp to number of microseconds
+df['timeStep'] = df['timeStep'].dt.microseconds
+# %%
+# save the cleaned dataset
+df.reset_index(inplace=True, drop=True)
+df[[x for x in df if 'time' not in x.lower()]].to_parquet('./data/firstCrashCleaned.parquet')
 
 # %%
 fig,ax = plt.subplots(dpi=100, figsize=[6,5])
