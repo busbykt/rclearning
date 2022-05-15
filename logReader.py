@@ -34,7 +34,7 @@ for i,file in enumerate(csvFiles):
 # sort the data by timestamp
 df.sort_values('timestamp', inplace=True)
 # forward fill data where missing
-df.interpolate(method='linear', inplace=True, limit_direction='forward')
+df.interpolate(method='ffill', inplace=True)
 
 # drop the first missing records
 df = df[~df.isnull().max(axis=1)]

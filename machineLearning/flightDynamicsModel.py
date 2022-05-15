@@ -27,7 +27,10 @@ df = pd.read_parquet('./data/firstCrashCleaned.parquet')
 # feature engineering
 # change in SSA, AOA, AspdE, Spd
 for col in ['SSA','AOA','AspdE','Spd',
-            'C1RCOU','C2RCOU','C3RCOU','C4RCOU']:
+            'C1RCOU','C2RCOU','C3RCOU','C4RCOU',
+            'GyrX','GyrY','GyrZ',
+            'AccX','AccY','AccZ',
+            'Roll', 'Pitch']:
     df['d'+col] = df[col].diff()
 # %%
 # things to predict
@@ -44,10 +47,10 @@ yCols = [
     'AccX',
     'AccY',
     'AccZ',
-    'Alt',
-    'Press',
+    # 'Alt',
+    # 'Press',
     # 'Temp',
-    'CRt'
+    'CRt' # climb rate
 ]
 
 xCols = [
@@ -63,8 +66,8 @@ xCols = [
     'AccX',
     'AccY',
     'AccZ',
-    'Alt',
-    'Press',
+    # 'Alt',
+    # 'Press',
     # 'Temp',
     'CRt',
     'C1RCOU',
@@ -79,7 +82,15 @@ xCols = [
     'dSSA',
     'dAspdE',
     'dAOA',
-    'dSpd'
+    'dSpd',
+    'dGyrX',
+    'dGyrY',
+    'dGyrZ',
+    'dAccX',
+    'dAccY',
+    'dAccZ',
+    'dRoll',
+    'dPitch'
 ]
 
 # %%
@@ -95,9 +106,11 @@ scaler = StandardScaler()
 dfs = pd.DataFrame(scaler.fit_transform(df[xCols+y]), columns=xCols+y)
 yScaler = StandardScaler()
 yScaler.fit(df[y])
+xScaler = StandardScaler()
+xScaler.fit(df[xCols])
 
 # train test split
-trainLen = int(len(dfs)*.75)
+trainLen = int(len(dfs)*.7)
 xTrain = dfs[xCols][:trainLen]
 xTest = dfs[xCols][trainLen:]
 yTrain = dfs[y][:trainLen]
@@ -105,21 +118,19 @@ yTest = dfs[y][trainLen:]
 # %%
 # build up a NN model
 model = keras.Sequential()
-model.add(keras.layers.Dense(128))
-model.add(keras.layers.Dense(128))
-model.add(keras.layers.Dense(64))
+model.add(keras.layers.Dense(1024, activation='relu'))
 model.add(keras.layers.Dense(len(yCols)))
 
 # %%
 model.compile(optimizer='sgd', loss='mse')
-history = model.fit(xTrain,yTrain, batch_size=32, epochs=30, validation_split=.2)
+history = model.fit(xTrain,yTrain, batch_size=16, epochs=100, validation_split=.3)
 
 # %%
 # plot train and validation results
 modelHist = pd.DataFrame(history.history)
 fig,ax = plt.subplots()
 sns.lineplot(data=modelHist,ax=ax)
-ax.set_xscale('log')
+# ax.set_yscale('log')
 plt.legend()
 plt.show()
 # %%
@@ -154,17 +165,24 @@ ratePreds = ratePred(xTest,xCols,yCols)
 
 # %%
 # convert back to original units for plotting
-
 # %%
+print('dummyModel', np.round(mean_squared_error(yTest,xTest[[x[1:] for x in y]]),3))
+print('rateModel', np.round(mean_squared_error(yTest,ratePreds[[x[1:] for x in y]]),3))
+print('NN',np.round(mean_squared_error(yTest,dfPred),3))
+# %%
+yTestUnscaled = pd.DataFrame(yScaler.inverse_transform(yTest), columns=y)
+dfPredUnscaled = pd.DataFrame(yScaler.inverse_transform(dfPred), columns=y)
+xTestUnscaled = pd.DataFrame(xScaler.inverse_transform(xTest), columns=xCols)
+
 for col in y:
     fig,ax = plt.subplots(dpi=80, figsize=[7,5])
-    ax.scatter(dfPred[col],yTest[col], label='NN', alpha=.7)
-    ax.scatter(xTest[col[1:]], yTest[col], label='dummy', alpha=.7)
+    ax.scatter(dfPredUnscaled[col],yTestUnscaled[col], label='NN', alpha=.7)
+    ax.scatter(xTestUnscaled[col[1:]], yTestUnscaled[col], label='dummy', alpha=.7)
     # ax.scatter(ratePreds[col[1:]], yTest[col], label='rate', alpha=.7)
     ax.set_title(col)
     ax.set_xlabel('pred'); ax.set_ylabel('truth')
-    ax.plot([dfPred[col].min(),dfPred[col].max()],
-             [dfPred[col].min(),dfPred[col].max()], 
+    ax.plot([dfPredUnscaled[col].min(),dfPredUnscaled[col].max()],
+             [dfPredUnscaled[col].min(),dfPredUnscaled[col].max()], 
              c='k', ls='--', label='perfect model')
     ax.legend()
     plt.show()
@@ -173,13 +191,7 @@ for col in y:
     print(np.round(mean_squared_error(yTest[col],xTest[col[1:]]),4),'dummy')
     print(np.round(mean_squared_error(yTest[col],ratePreds[col[1:]]),4),'rate')
 # %%
-print('dummyModel', np.round(mean_squared_error(yTest,xTest[[x[1:] for x in y]]),3))
-print('rateModel', np.round(mean_squared_error(yTest,ratePreds[[x[1:] for x in y]]),3))
-print('NN',np.round(mean_squared_error(yTest,dfPred),3))
-# %%
 # error distributions
-yTestUnscaled = pd.DataFrame(yScaler.transform(yTest), columns=yCols)
-dfPredUnscaled = pd.DataFrame(yScaler.transform(dfPred), columns=yCols)
 errorDF = yTestUnscaled - dfPredUnscaled
 # %%
 sns.histplot(errorDF[['AccX','AccY','AccZ']])
@@ -192,4 +204,10 @@ sns.histplot(errorDF[['Roll','SSA','AOA','Pitch']])
 plt.xlabel('degrees');
 # %%
 sns.histplot(errorDF[['AspdE','Spd']])
+
+# %%
+# interpret how the model responds to changes in control inputs
+from sklearn.inspection import partial_dependence
+
+
 # %%
