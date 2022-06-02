@@ -120,7 +120,7 @@ yTest = pd.DataFrame(yScaler.transform(yTest[y]), columns=y)
 # %%
 # build up a NN model
 model = keras.Sequential()
-model.add(keras.layers.Dense(512, activation='relu'))
+model.add(keras.layers.Dense(1024, activation='relu'))
 model.add(keras.layers.Dense(len(yCols)))
 
 # %%
@@ -172,6 +172,7 @@ print('dummyModel', np.round(mean_squared_error(yTest,xTest[[x[1:] for x in y]])
 print('rateModel', np.round(mean_squared_error(yTest,ratePreds[[x[1:] for x in y]]),3))
 print('NN',np.round(mean_squared_error(yTest,dfPred),3))
 # %%
+xTrainUnscaled = pd.DataFrame(xScaler.inverse_transform(xTrain), columns=xCols)
 yTestUnscaled = pd.DataFrame(yScaler.inverse_transform(yTest), columns=y)
 dfPredUnscaled = pd.DataFrame(yScaler.inverse_transform(dfPred), columns=y)
 xTestUnscaled = pd.DataFrame(xScaler.inverse_transform(xTest), columns=xCols)
@@ -211,42 +212,54 @@ sns.histplot(errorDF[['yAspdE','ySpd']])
 
 # %%
 # interpret how the model responds to changes in control inputs
-controlInput = 'C1RCOU'
-samples = len(xTestUnscaled)
-steps = 100
-xTestICE = pd.DataFrame(np.repeat(xTestUnscaled.sample(samples).values,steps,axis=0), 
-                                columns=xTest.columns)
-inputs = [np.linspace(1000,2000,steps) for _ in range(samples)]
-xTestICE[controlInput] = np.stack(inputs, axis=0).flatten()
-xTestICE = pd.DataFrame(xScaler.transform(xTestICE),columns=xCols)
-ICEpred = pd.DataFrame(model.predict(xTestICE), columns=yCols)
-# unscale the inputs and predictions
-xTestICEUnscaled = pd.DataFrame(xScaler.inverse_transform(xTestICE),columns=xCols)
-ICEpredUnscaled = pd.DataFrame(yScaler.inverse_transform(ICEpred), columns=yCols)
+varDefDict = {'C1RCOU':'Aileron Position', 
+              'C2RCOU':'Elevator Position', 
+              'C3RCOU':'Throttle Position', 
+              'C4RCOU':'Rudder Position'}
+for controlInput in varDefDict.keys():
+    samples = int(len(xTestUnscaled)/2)
+    steps = 100
+    xTestICE = pd.DataFrame(np.repeat(xTestUnscaled.sample(samples).values,steps,axis=0), 
+                                    columns=xTest.columns)
+    inputs = [np.linspace(xTrainUnscaled[controlInput].min(),
+                          xTrainUnscaled[controlInput].max(),
+                          steps) for _ in range(samples)]
+    xTestICE[controlInput] = np.stack(inputs, axis=0).flatten()
+    xTestICE = pd.DataFrame(xScaler.transform(xTestICE),columns=xCols)
+    ICEpred = pd.DataFrame(model.predict(xTestICE), columns=yCols)
+    # unscale the inputs and predictions
+    xTestICEUnscaled = pd.DataFrame(xScaler.inverse_transform(xTestICE),columns=xCols)
+    ICEpredUnscaled = pd.DataFrame(yScaler.inverse_transform(ICEpred), columns=yCols)
 
-# add an index to groupby
-xTestICEUnscaled['index'] = np.stack([range(steps)]*samples,axis=0).flatten()
-ICEpredUnscaled['index'] = np.stack([range(steps)]*samples,axis=0).flatten()
+    # add an index to groupby
+    xTestICEUnscaled['index'] = np.stack([range(steps)]*samples,axis=0).flatten()
+    ICEpredUnscaled['index'] = np.stack([range(steps)]*samples,axis=0).flatten()
 
-# groupby the new index taking the mean
-xTestPDPUnscaled = xTestICEUnscaled.groupby('index').mean()
-PDPpredUnscaled = ICEpredUnscaled.groupby('index').mean()
-# %%
-fig,ax = plt.subplots(figsize=[7,5],dpi=100)
-ax.scatter(xTestPDPUnscaled[controlInput], 
-           PDPpredUnscaled['Roll']-PDPpredUnscaled['Roll'].mean(), 
-           s=5, 
-           label='Roll')
-ax.scatter(xTestPDPUnscaled[controlInput], 
-           PDPpredUnscaled['Pitch']-PDPpredUnscaled['Pitch'].mean(), 
-           s=5, 
-           label='Pitch')
-ax.scatter(xTestPDPUnscaled[controlInput], 
-           PDPpredUnscaled['SSA']-PDPpredUnscaled['SSA'].mean(), 
-           s=5, 
-           label='SideSlipAngle')
-ax.legend();
-ax.set_xlabel('C1RCOU (Aileron Position)')
-ax.set_ylabel('Degrees')
-ax.set_title(f'Test Set Partial Dependence on {controlInput}')
+    # groupby the new index taking the mean
+    xTestPDPUnscaled = xTestICEUnscaled.groupby('index').mean()
+    PDPpredUnscaled = ICEpredUnscaled.groupby('index').mean()
+
+    # convert rates to degrees per second
+    PDPpredUnscaled[['GyrX','GyrY','GyrZ']] = PDPpredUnscaled[['GyrX','GyrY','GyrZ']] * 180/np.pi 
+
+    # plot the partial dependence of rates
+    fig,ax = plt.subplots(figsize=[7,5],dpi=100)
+    ax.scatter(xTestPDPUnscaled[controlInput], 
+            PDPpredUnscaled['GyrX']-PDPpredUnscaled['GyrX'].mean(), 
+            s=5, 
+            label='GyrX')
+    ax.scatter(xTestPDPUnscaled[controlInput], 
+            PDPpredUnscaled['GyrY']-PDPpredUnscaled['GyrY'].mean(), 
+            s=5, 
+            label='GyrY')
+    ax.scatter(xTestPDPUnscaled[controlInput], 
+            PDPpredUnscaled['GyrZ']-PDPpredUnscaled['GyrZ'].mean(), 
+            s=5, 
+            label='GyrZ')
+    ax.legend();
+    ax.set_xlabel(f'{varDefDict[controlInput]}')
+    ax.set_ylabel('Degrees per Second')
+    ax.set_title(f'Test Set Partial Dependence on {varDefDict[controlInput]}')
+    ax.set_ylim(-.43*180/np.pi,.43*180/np.pi)
+    plt.show()
 # %%

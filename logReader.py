@@ -52,7 +52,7 @@ df['timeStep'] = df['datetime'].shift(-1) - df['datetime']
 
 # %%
 # resample the data at some fixed frequency
-df = df.resample('200ms').ffill()
+df = df.resample('100ms').ffill()
 
 # FOR FIRST FLIGHT ONLY
 df = df[(df.index > '2022-04-21 01:04:00.000') &
