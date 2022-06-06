@@ -169,8 +169,6 @@ ratePreds = ratePred(xTest,xCols,yCols)
 
 
 # %%
-# convert back to original units for plotting
-# %%
 print('dummyModel', np.round(mean_squared_error(yTest,xTest[[x[1:] for x in y]]),3))
 print('rateModel', np.round(mean_squared_error(yTest,ratePreds[[x[1:] for x in y]]),3))
 print('NN',np.round(mean_squared_error(yTest,dfPred),3))
@@ -186,7 +184,7 @@ for col in y:
     fig,ax = plt.subplots(dpi=80, figsize=[7,5])
     ax.scatter(dfPredUnscaled[col],yTestUnscaled[col], label='NN', alpha=.7)
     ax.scatter(xTestUnscaled[col[1:]], yTestUnscaled[col], label='dummy', alpha=.7)
-    ax.scatter(ratePredsUnscaled[col], yTestUnscaled[col], label='rate', alpha=.7)
+    # ax.scatter(ratePredsUnscaled[col], yTestUnscaled[col], label='rate', alpha=.7)
     ax.set_title(col)
     ax.set_xlabel('pred'); ax.set_ylabel('truth')
     ax.plot([dfPredUnscaled[col].min(),dfPredUnscaled[col].max()],
@@ -264,7 +262,7 @@ for controlInput in varDefDict.keys():
     ax.set_xlabel(f'{varDefDict[controlInput]}')
     ax.set_ylabel('Degrees per Second')
     ax.set_title(f'Test Set Partial Dependence on {varDefDict[controlInput]}')
-    ax.set_ylim(-25,25)
+    ax.set_ylim(-45,45)
     ax.grid(alpha=.15)
     plt.show()
 
@@ -323,7 +321,7 @@ b = xTest.sample(1, random_state=3)
 interestCols = ['AOA', 'SSA', 'Spd', 'Roll', 'Pitch', 'GyrX', 'C1RCOU']
 b = pd.DataFrame(b.values.repeat(10, axis=0), columns=xCols)
 b[controlInput] = np.linspace(xTest[controlInput].min(),xTest[controlInput].max(),10)
-b['AspdE'] = 5
+b['AspdE'] = 6
 bUnscaled = pd.DataFrame(xScaler.inverse_transform(b), columns=xCols)
 
 bPred = pd.DataFrame(model.predict(b), columns=y)
